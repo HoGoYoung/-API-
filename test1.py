@@ -143,21 +143,100 @@ def main(appid, api_secret, api_key, gpt_url, domain, query):
     ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE})
 
 
+
+import os
+
+from dotenv import load_dotenv, find_dotenv
+
+# 读取本地/项目的环境变量。
+
+find_dotenv()  #寻找并定位 .env 文件的路径
+load_dotenv()  #读取该 .env 文件，并将其中的环境变量加载到当前的运行环境中  
+# 如果你设置的是全局的环境变量，这行代码则没有任何作用。
+_ = load_dotenv(find_dotenv())
+
+
+
+from sparkai.llm.llm import ChatSparkLLM, ChunkPrintHandler
+from sparkai.core.messages import ChatMessage
+
+def gen_spark_params(model):
+    '''
+    构造星火模型请求参数
+    '''
+
+    spark_url_tpl = "wss://spark-api.xf-yun.com/{}/chat"
+    model_params_dict = {
+        # v1.5 版本
+        "v1.5": {
+            "domain": "general", # 用于配置大模型版本
+            "spark_url": spark_url_tpl.format("v1.1") # 云端环境的服务地址
+        },
+        # v2.0 版本
+        "v2.0": {
+            "domain": "generalv2", # 用于配置大模型版本
+            "spark_url": spark_url_tpl.format("v2.1") # 云端环境的服务地址
+        },
+        # v3.0 版本
+        "v3.0": {
+            "domain": "generalv3", # 用于配置大模型版本
+            "spark_url": spark_url_tpl.format("v3.1") # 云端环境的服务地址
+        },
+        # v3.5 版本
+        "v3.5": {
+            "domain": "generalv3.5", # 用于配置大模型版本
+            "spark_url": spark_url_tpl.format("v3.5") # 云端环境的服务地址
+        },
+        # v4.0 版本
+        "v4.0": {
+            "domain": "generalv4.0", # 用于配置大模型版本
+            "spark_url": spark_url_tpl.format("v4.0") # 云端环境的服务地址
+        }
+    }
+    return model_params_dict[model]
+
+def gen_spark_messages(prompt):
+    '''
+    构造星火模型请求参数 messages
+
+    请求参数：
+        prompt: 对应的用户提示词
+    '''
+
+
+    messages = [ChatMessage(role="user", content=prompt)]
+    return messages
+
+def get_completion(prompt, model="v3.5", temperature = 0.1):
+    
+    spark_llm = ChatSparkLLM(
+        spark_api_url=gen_spark_params(model)["spark_url"],
+        spark_app_id="9fa7188e",
+        spark_api_key="fadadbcddad6a9cf462bfb3290050dd7",
+        spark_api_secret="NDI1OTNkZGMwNGY5MDNkZmJjZWM0ZDhj",
+        spark_llm_domain=gen_spark_params(model)["domain"],
+        temperature=temperature,
+        streaming=True,
+     )
+    for chunk in spark_llm.stream([ChatMessage(role="user", content=prompt)]):
+        print(chunk.content, end='', flush=True)  # 立即输出每个字符
+    print()  # 结束后换行
+    
+prompt=f"""
+给我一些研究LLM长度外推的论文，包括论文标题、主要内容和链接
+"""
+
 if __name__ == "__main__":
-    main(
-        appid="9fa7188e",
-        api_secret="NDI1OTNkZGMwNGY5MDNkZmJjZWM0ZDhj",
-        api_key="fadadbcddad6a9cf462bfb3290050dd7",
-        #appid、api_secret、api_key三个服务认证信息请前往开放平台控制台查看（https://console.xfyun.cn/services/bm35）
-        gpt_url="wss://spark-api.xf-yun.com/v3.5/chat",
-        # Spark_url = "ws://spark-api.xf-yun.com/v3.1/chat"  # v3.0环境的地址
-        # Spark_url = "ws://spark-api.xf-yun.com/v2.1/chat"  # v2.0环境的地址
-        # Spark_url = "ws://spark-api.xf-yun.com/v1.1/chat"  # v1.5环境的地址
-        domain="generalv3.5",
-        # domain = "generalv3"    # v3.0版本
-        # domain = "generalv2"    # v2.0版本
-        # domain = "general"    # v2.0版本
-        query="请介绍一下华南理工大学"
-    )
+    # main(
+    #     appid="9fa7188e",
+    #     api_secret="NDI1OTNkZGMwNGY5MDNkZmJjZWM0ZDhj",
+    #     api_key="fadadbcddad6a9cf462bfb3290050dd7",
+    #     gpt_url="wss://spark-api.xf-yun.com/v3.5/chat",
+    #     domain="generalv3.5",
+    #     query=""
+    # )
 
-
+    # 仅保留SDK调用方式，使用prompt输入
+  response=get_completion(prompt)
+  print(response)
+   
